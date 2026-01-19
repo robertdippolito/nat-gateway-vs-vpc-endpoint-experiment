@@ -34,7 +34,7 @@ terraform apply -auto-approve -var="enable_s3_endpoint=false"
 aws ssm start-session --target <instance-id> --region <region>
 ```
 
-### 3) Load environment
+### 3) Load / verify environment
 ```bash
 source /etc/profile.d/experiment.sh
 echo "TEST_BUCKET=$TEST_BUCKET"
