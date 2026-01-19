@@ -1,17 +1,53 @@
-Apply the terraform 
+# NAT vs VPC Endpoint (S3) Experiment
+
+This repo provisions a small VPC with a private EC2 instance and runs a simple
+S3 read/write workload from that instance. You can run the workload twice:
+first with NAT-only access, then with an S3 Gateway VPC Endpoint enabled, to
+compare performance and traffic behavior.
+
+<p align="center">
+  <a href="https://youtu.be/Rsbh3zf_VaM" title="Durable Terraform Applies with Temporal (Retries, State, Parallel Modules)">
+    <img src="https://img.youtube.com/vi/Rsbh3zf_VaM/maxresdefault.jpg" alt="Watch on YouTube" width="600">
+  </a>
+</p>
+
+## What this does
+- Creates a VPC with public and private subnets.
+- Launches a private EC2 instance with SSM access.
+- Creates an S3 bucket and IAM policy for the test.
+- Optionally adds an S3 Gateway VPC Endpoint.
+
+## Prerequisites
+- Terraform installed.
+- AWS credentials configured for the target account.
+- SSM access to the instance (Session Manager).
+
+## Run the experiment
+
+### 1) Deploy baseline (NAT only)
+```bash
 terraform apply -auto-approve -var="enable_s3_endpoint=false"
+```
 
-Start session manager
+### 2) Start Session Manager
+```bash
 aws ssm start-session --target <instance-id> --region <region>
+```
 
+### 3) Load environment
+```bash
 source /etc/profile.d/experiment.sh
 echo "TEST_BUCKET=$TEST_BUCKET"
 aws sts get-caller-identity
+```
 
+### 4) Run a quick workload (optional)
+```bash
 WORKERS=2 SIZE_MB=256 DURATION_SEC=600 /tmp/vpce-traffic.sh
+```
 
-Better for experiment
-
+### 5) (Optional) Install a more robust workload script
+```bash
 cat >/tmp/vpce-traffic.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -85,10 +121,15 @@ echo "Done. Objects under: s3://${TEST_BUCKET}/${KEY_BASE}/"
 EOF
 
 chmod +x /tmp/vpce-traffic.sh
-source /etc/profile.d/experiment.sh
-WORKERS=2 SIZE_MB=256 DURATION_SEC=600 /tmp/vpce-traffic.sh
+```
 
+### 6) Enable S3 Gateway VPC Endpoint
+```bash
 terraform apply -auto-approve -var="enable_s3_endpoint=true"
+```
 
+### 7) Re-run the workload
+```bash
 source /etc/profile.d/experiment.sh
 WORKERS=2 SIZE_MB=256 DURATION_SEC=600 /tmp/vpce-traffic.sh
+```
